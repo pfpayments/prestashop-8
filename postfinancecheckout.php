@@ -32,7 +32,7 @@ class PostFinanceCheckout extends PaymentModule
         $this->author = 'wallee AG';
         $this->bootstrap = true;
         $this->need_instance = 0;
-        $this->version = '1.0.0';
+        $this->version = '1.0.1';
         $this->displayName = 'PostFinance Checkout';
         $this->description = $this->l('This PrestaShop module enables to process payments with %s.');
         $this->description = sprintf($this->description, 'PostFinance Checkout');
@@ -141,8 +141,7 @@ class PostFinanceCheckout extends PaymentModule
 
     public function getContent()
     {
-        $output = PostFinanceCheckoutBasemodule::getMailHookActiveWarning($this);
-        $output .= PostFinanceCheckoutBasemodule::handleSaveAll($this);
+        $output = PostFinanceCheckoutBasemodule::handleSaveAll($this);
         $output .= PostFinanceCheckoutBasemodule::handleSaveApplication($this);
         $output .= PostFinanceCheckoutBasemodule::handleSaveEmail($this);
         $output .= PostFinanceCheckoutBasemodule::handleSaveCartRecreation($this);
