@@ -70,38 +70,38 @@ jQuery(function ($) {
             if (current_method.data('module-name') === 'postfinancecheckout') {
                 postData = "methodId="+current_method.data("postfinancecheckout-method-id");
             }
-            $.ajax({
-                type: 'POST',
-                url: postFinanceCheckoutCheckoutUrl,
-                data: postData,
-                dataType: "json",
-                success:  function (response, textStatus, jqXHR) {
-                    if ( response.result === 'success') {
-                        $("#js-checkout-summary").fadeOut("slow", function () {
-                            var div = $(response.preview).hide();
-                            $(this).replaceWith(div);
-                            $("#js-checkout-summary").fadeIn("slow");
-                        });
-                        $("#order-items").fadeOut("slow", function () {
-                            var confirmation = $(response.summary).find("#order-items");
-                            $(confirmation).hide();
-                            $(this).replaceWith(confirmation);
-                            $("#order-items").fadeIn("slow");
-                        });
-                        self.cartHash = response.cartHash
-                    } else {
-                          window.location.href = window.location.href;
+                $.ajax({
+                    type: 'POST',
+                    url: postFinanceCheckoutCheckoutUrl,
+                    data: postData,
+                    dataType: "json",
+                    success: function (response, textStatus, jqXHR) {
+                        if (response.result === 'success') {
+                            $("#js-checkout-summary").fadeOut("slow", function () {
+                                var div = $(response.preview).hide();
+                                $(this).replaceWith(div);
+                                $("#js-checkout-summary").fadeIn("slow");
+                            });
+                            $("#order-items").fadeOut("slow", function () {
+                                var confirmation = $(response.summary).find("#order-items");
+                                $(confirmation).hide();
+                                $(this).replaceWith(confirmation);
+                                $("#order-items").fadeIn("slow");
+                            });
+                            self.cartHash = response.cartHash
+                        } else {
+                            window.location.href = window.location.href;
+                        }
+                    },
+                    error: function (jqXHR, textStatus, errorThrown) {
+                        window.location.href = window.location.href;
+                        return;
                     }
-                },
-                error:      function (jqXHR, textStatus, errorThrown) {
-                    window.location.href = window.location.href;
-                    return;
-                }
-            });
+                });
+            
             if (current_method.data('module-name') === 'postfinancecheckout') {
                 self.register_method(current_method.data("postfinancecheckout-method-id"), current_method.data("postfinancecheckout-configuration-id"), "postfinancecheckout-"+current_method.data("postfinancecheckout-method-id"));
             }
-
         },
 
         get_selected_payment_method : function () {
@@ -109,8 +109,8 @@ jQuery(function ($) {
         },
 
         register_method : function (method_id, configuration_id, container_id) {
-
-            if (typeof window.postfinancecheckoutIFrameCheckoutHandler == 'undefined') {
+            //if redirect was enabled
+            if ($('#postfinancecheckout-iframe-possible-' + method_id).val() == 1) {
                 $('#postfinancecheckout-loader-'+method_id).remove();
                 this.payment_methods[method_id] = {
                     configuration_id : configuration_id,

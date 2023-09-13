@@ -32,7 +32,7 @@ class PostFinanceCheckout extends PaymentModule
         $this->author = 'wallee AG';
         $this->bootstrap = true;
         $this->need_instance = 0;
-        $this->version = '1.0.3';
+        $this->version = '1.0.4';
         $this->displayName = 'PostFinance Checkout';
         $this->description = $this->l('This PrestaShop module enables to process payments with %s.');
         $this->description = sprintf($this->description, 'PostFinance Checkout');
@@ -144,6 +144,7 @@ class PostFinanceCheckout extends PaymentModule
         $output = PostFinanceCheckoutBasemodule::handleSaveAll($this);
         $output .= PostFinanceCheckoutBasemodule::handleSaveApplication($this);
         $output .= PostFinanceCheckoutBasemodule::handleSaveEmail($this);
+        $output .= PostFinanceCheckoutBasemodule::handleSaveIntegration($this);
         $output .= PostFinanceCheckoutBasemodule::handleSaveCartRecreation($this);
         $output .= PostFinanceCheckoutBasemodule::handleSaveFeeItem($this);
         $output .= PostFinanceCheckoutBasemodule::handleSaveDownload($this);
@@ -158,6 +159,7 @@ class PostFinanceCheckout extends PaymentModule
     {
         return array(
             PostFinanceCheckoutBasemodule::getEmailForm($this),
+            PostFinanceCheckoutBasemodule::getIntegrationForm($this),
             PostFinanceCheckoutBasemodule::getCartRecreationForm($this),
             PostFinanceCheckoutBasemodule::getFeeForm($this),
             PostFinanceCheckoutBasemodule::getDocumentForm($this),
@@ -172,6 +174,7 @@ class PostFinanceCheckout extends PaymentModule
         return array_merge(
             PostFinanceCheckoutBasemodule::getApplicationConfigValues($this),
             PostFinanceCheckoutBasemodule::getEmailConfigValues($this),
+            PostFinanceCheckoutBasemodule::getIntegrationConfigValues($this),
             PostFinanceCheckoutBasemodule::getCartRecreationConfigValues($this),
             PostFinanceCheckoutBasemodule::getFeeItemConfigValues($this),
             PostFinanceCheckoutBasemodule::getDownloadConfigValues($this),
@@ -251,6 +254,7 @@ class PostFinanceCheckout extends PaymentModule
         foreach (PostFinanceCheckoutHelper::sortMethodConfiguration($methods) as $methodConfiguration) {
             $parameters = PostFinanceCheckoutBasemodule::getParametersFromMethodConfiguration($this, $methodConfiguration, $cart, $shopId, $language);
             $parameters['priceDisplayTax'] = Group::getPriceDisplayMethod(Group::getCurrent()->id);
+            $parameters['iframe'] = $cart->iframe;
             $parameters['orderUrl'] = $this->context->link->getModuleLink(
                 'postfinancecheckout',
                 'order',
