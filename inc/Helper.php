@@ -34,15 +34,15 @@ class PostFinanceCheckoutHelper
 
     /**
      *
-     * @throws Exception
      * @return \PostFinanceCheckout\Sdk\ApiClient
+     * @throws Exception
      */
     public static function getApiClient()
     {
         if (self::$apiClient === null) {
             $userId = Configuration::getGlobalValue(PostFinanceCheckoutBasemodule::CK_USER_ID);
             $userKey = Configuration::getGlobalValue(PostFinanceCheckoutBasemodule::CK_APP_KEY);
-            if (! empty($userId) && ! empty($userKey)) {
+            if (!empty($userId) && !empty($userKey)) {
                 self::$apiClient = new \PostFinanceCheckout\Sdk\ApiClient($userId, $userKey);
                 self::$apiClient->setBasePath(self::getBaseGatewayUrl() . '/api');
                 foreach (self::getDefaultHeaderData() as $key => $value) {
@@ -63,16 +63,27 @@ class PostFinanceCheckoutHelper
     public static function startDBTransaction()
     {
         $dbLink = Db::getInstance()->getLink();
-        if ($dbLink instanceof mysqli) {
-            $dbLink->query("SET TRANSACTION ISOLATION LEVEL READ COMMITTED");
-            $dbLink->begin_transaction();
-        } elseif ($dbLink instanceof PDO) {
-            $dbLink->exec("SET TRANSACTION ISOLATION LEVEL READ COMMITTED");
-            $dbLink->beginTransaction();
-        } else {
-            throw new Exception('This module needs a PDO or MYSQLI link to use DB transactions');
+        // Check if the database connection is valid
+        if (!$dbLink) {
+            throw new Exception(message: 'No database connection available.');
         }
-		return $dbLink;
+        // Start transaction based on the type of connection
+        try {
+            if ($dbLink instanceof mysqli) {
+                $dbLink->query(query: "SET TRANSACTION ISOLATION LEVEL READ COMMITTED");
+                $dbLink->begin_transaction();
+            } elseif ($dbLink instanceof PDO) {
+                $dbLink->exec(statement: "SET TRANSACTION ISOLATION LEVEL READ COMMITTED");
+                $dbLink->beginTransaction();
+            } else {
+                throw new Exception(message: 'This module needs a PDO or MYSQLI link to use DB transactions.');
+            }
+        } catch (PDOException|mysqli_sql_exception $e) {
+            // Log the error for further tracking
+            error_log(message: 'Error while starting database transaction: ' . $e->getMessage());
+            throw new Exception(message: 'Error while starting database transaction.');
+        }
+        return $dbLink;
     }
 
     public static function commitDBTransaction()
@@ -81,7 +92,11 @@ class PostFinanceCheckoutHelper
         if ($dbLink instanceof mysqli) {
             $dbLink->commit();
         } elseif ($dbLink instanceof PDO) {
-            $dbLink->commit();
+            try {
+                $dbLink->commit();
+            } catch (Exception $e) {
+                // catch exception and rollback transaction
+            }
         }
     }
 
@@ -102,12 +117,12 @@ class PostFinanceCheckoutHelper
     {
         Db::getInstance()->getLink()->query(
             'SELECT * FROM ' . _DB_PREFIX_ . 'pfc_transaction_info WHERE transaction_id = "' .
-            (int) $transactionId . '" AND space_id = "' . (int) $spaceId . '" FOR UPDATE;'
+            (int)$transactionId . '" AND space_id = "' . (int)$spaceId . '" FOR UPDATE;'
         );
 
         Db::getInstance()->getLink()->query(
             'UPDATE ' . _DB_PREFIX_ . 'pfc_transaction_info SET locked_at = "' . pSQL(date('Y-m-d H:i:s')) .
-            '" WHERE transaction_id = "' . (int) $transactionId . '" AND space_id = "' . (int) $spaceId . '";'
+            '" WHERE transaction_id = "' . (int)$transactionId . '" AND space_id = "' . (int)$spaceId . '";'
         );
     }
 
@@ -188,7 +203,7 @@ class PostFinanceCheckoutHelper
         $roundedExpected = self::roundAmount($expectedSum, $currencyCode);
         $diff = $roundedExpected - $effectiveSum;
         if ($diff != 0) {
-            if ((int) Configuration::getGlobalValue(PostFinanceCheckoutBasemodule::CK_LINE_ITEM_CONSISTENCY)) {
+            if ((int)Configuration::getGlobalValue(PostFinanceCheckoutBasemodule::CK_LINE_ITEM_CONSISTENCY)) {
                 throw new PostFinanceCheckoutExceptionInvalidtransactionamount($effectiveSum, $roundedExpected);
             } else {
                 $diffAmount = self::roundAmount($diff, $currencyCode);
@@ -232,7 +247,7 @@ class PostFinanceCheckoutHelper
             if (isset($uniqueIds[$uniqueId])) {
                 $backup = $uniqueId;
                 $uniqueId = $uniqueId . '_' . $uniqueIds[$uniqueId];
-                $uniqueIds[$backup] ++;
+                $uniqueIds[$backup]++;
             } else {
                 $uniqueIds[$uniqueId] = 1;
             }
@@ -267,7 +282,7 @@ class PostFinanceCheckoutHelper
     public static function updateCartMeta(Cart $cart, $key, $value)
     {
         Db::getInstance()->execute(
-            'INSERT INTO ' . _DB_PREFIX_ . 'pfc_cart_meta (cart_id, meta_key, meta_value) VALUES ("' . (int) $cart->id .
+            'INSERT INTO ' . _DB_PREFIX_ . 'pfc_cart_meta (cart_id, meta_key, meta_value) VALUES ("' . (int)$cart->id .
             '", "' . pSQL($key) . '", "' . pSQL(PostFinanceCheckoutTools::base64Encode(serialize($value))) .
             '") ON DUPLICATE KEY UPDATE meta_value = "' .
             pSQL(PostFinanceCheckoutTools::base64Encode(serialize($value))) . '";'
@@ -277,7 +292,7 @@ class PostFinanceCheckoutHelper
     public static function getCartMeta(Cart $cart, $key)
     {
         $value = Db::getInstance()->getValue(
-            'SELECT meta_value FROM ' . _DB_PREFIX_ . 'pfc_cart_meta WHERE cart_id = "' . (int) $cart->id .
+            'SELECT meta_value FROM ' . _DB_PREFIX_ . 'pfc_cart_meta WHERE cart_id = "' . (int)$cart->id .
             '" AND meta_key = "' . pSQL($key) . '";',
             false
         );
@@ -294,7 +309,7 @@ class PostFinanceCheckoutHelper
     public static function clearCartMeta(Cart $cart, $key)
     {
         Db::getInstance()->execute(
-            'DELETE FROM ' . _DB_PREFIX_ . 'pfc_cart_meta WHERE cart_id = "' . (int) $cart->id . '" AND meta_key = "' .
+            'DELETE FROM ' . _DB_PREFIX_ . 'pfc_cart_meta WHERE cart_id = "' . (int)$cart->id . '" AND meta_key = "' .
             pSQL($key) . '";',
             false
         );
@@ -359,13 +374,13 @@ class PostFinanceCheckoutHelper
         } else {
             $url = $base;
         }
-        if (! empty($language)) {
+        if (!empty($language)) {
             $url .= '/' . str_replace('_', '-', $language);
         }
-        if (! empty($spaceId)) {
+        if (!empty($spaceId)) {
             $url .= '/s/' . $spaceId;
         }
-        if (! empty($spaceViewId)) {
+        if (!empty($spaceViewId)) {
             $url .= '/' . $spaceViewId;
         }
         $url .= '/resource/' . $path;
@@ -377,17 +392,17 @@ class PostFinanceCheckoutHelper
         $toHash = $cart->getOrderTotal(true, Cart::BOTH) . ';';
         $summary = $cart->getSummaryDetails(null, true);
         foreach ($summary['products'] as $productItem) {
-            $toHash .= ((float) $productItem['total_wt']) . '-' . $productItem['reference'] . '-' .
+            $toHash .= ((float)$productItem['total_wt']) . '-' . $productItem['reference'] . '-' .
                 $productItem['quantity'] . ';';
         }
         // Add shipping costs
-        $toHash .= ((float) $summary['total_shipping']) . '-' . ((float) $summary['total_shipping_tax_exc']) . ';';
+        $toHash .= ((float)$summary['total_shipping']) . '-' . ((float)$summary['total_shipping_tax_exc']) . ';';
         // Add wrapping costs
-        $toHash .= ((float) $summary['total_wrapping']) . '-' . ((float) $summary['total_wrapping_tax_exc']) . ';';
+        $toHash .= ((float)$summary['total_wrapping']) . '-' . ((float)$summary['total_wrapping_tax_exc']) . ';';
         // Add discounts
         if (count($summary['discounts']) > 0) {
             foreach ($summary['discounts'] as $discount) {
-                $toHash .= ((float) $discount['value_real']) . '-' . $discount['id_cart_rule'] . ';';
+                $toHash .= ((float)$discount['value_real']) . '-' . $discount['id_cart_rule'] . ';';
             }
         }
 
@@ -405,7 +420,7 @@ class PostFinanceCheckoutHelper
     public static function updateOrderMeta(Order $order, $key, $value)
     {
         Db::getInstance()->execute(
-            'INSERT INTO ' . _DB_PREFIX_ . 'pfc_order_meta (order_id, meta_key, meta_value) VALUES ("' . (int) $order->id .
+            'INSERT INTO ' . _DB_PREFIX_ . 'pfc_order_meta (order_id, meta_key, meta_value) VALUES ("' . (int)$order->id .
             '", "' . pSQL($key) . '", "' . pSQL(serialize($value)) .
             '") ON DUPLICATE KEY UPDATE meta_value = "' . pSQL(serialize($value)) . '";'
         );
@@ -414,7 +429,7 @@ class PostFinanceCheckoutHelper
     public static function getOrderMeta(Order $order, $key)
     {
         $value = Db::getInstance()->getValue(
-            'SELECT meta_value FROM ' . _DB_PREFIX_ . 'pfc_order_meta WHERE order_id = "' . (int) $order->id .
+            'SELECT meta_value FROM ' . _DB_PREFIX_ . 'pfc_order_meta WHERE order_id = "' . (int)$order->id .
             '" AND meta_key = "' . pSQL($key) . '";',
             false
         );
@@ -427,7 +442,7 @@ class PostFinanceCheckoutHelper
     public static function clearOrderMeta(Order $order, $key)
     {
         Db::getInstance()->execute(
-            'DELETE FROM ' . _DB_PREFIX_ . 'pfc_order_meta WHERE order_id = "' . (int) $order->id . '" AND meta_key = "' .
+            'DELETE FROM ' . _DB_PREFIX_ . 'pfc_order_meta WHERE order_id = "' . (int)$order->id . '" AND meta_key = "' .
             pSQL($key) . '";',
             false
         );
@@ -436,7 +451,7 @@ class PostFinanceCheckoutHelper
     public static function storeOrderEmails(Order $order, $mails)
     {
         Db::getInstance()->execute(
-            'INSERT INTO ' . _DB_PREFIX_ . 'pfc_order_meta (order_id, meta_key, meta_value) VALUES ("' . (int) $order->id .
+            'INSERT INTO ' . _DB_PREFIX_ . 'pfc_order_meta (order_id, meta_key, meta_value) VALUES ("' . (int)$order->id .
             '", "' . pSQL('mails') . '", "' .
             pSQL(PostFinanceCheckoutTools::base64Encode(serialize($mails))) .
             '") ON DUPLICATE KEY UPDATE meta_value = "' .
@@ -448,7 +463,7 @@ class PostFinanceCheckoutHelper
     {
         class_exists('Mail');
         $value = Db::getInstance()->getValue(
-            'SELECT meta_value FROM ' . _DB_PREFIX_ . 'pfc_order_meta WHERE order_id = "' . (int) $order->id .
+            'SELECT meta_value FROM ' . _DB_PREFIX_ . 'pfc_order_meta WHERE order_id = "' . (int)$order->id .
             '" AND meta_key = "' . pSQL('mails') . '";',
             false
         );
@@ -483,16 +498,16 @@ class PostFinanceCheckoutHelper
      */
     public static function sortMethodConfiguration(array $configurations)
     {
-		usort(
-			$configurations,
-			function ($a, $b) {
-				if ($a->getSortOrder() == $b->getSortOrder()) {
-					return  $b->getConfigurationName() <=> $a->getConfigurationName();
-				}
-				return  $b->getSortOrder() <=> $a->getSortOrder();
-			}
-		);
-		return $configurations;
+        usort(
+            $configurations,
+            function ($a, $b) {
+                if ($a->getSortOrder() == $b->getSortOrder()) {
+                    return $b->getConfigurationName() <=> $a->getConfigurationName();
+                }
+                return $b->getSortOrder() <=> $a->getSortOrder();
+            }
+        );
+        return $configurations;
     }
 
     /**
@@ -628,7 +643,7 @@ class PostFinanceCheckoutHelper
      */
     public static function getTransactionInfoForOrder($order)
     {
-        if (! $order->module == 'postfinancecheckout') {
+        if (!$order->module == 'postfinancecheckout') {
             return null;
         }
         $searchId = $order->id;
@@ -657,30 +672,30 @@ class PostFinanceCheckoutHelper
 
         return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
     }
-    
+
     public static function getMaxExecutionTime()
     {
         $maxExecutionTime = ini_get('max_execution_time');
-        
+
         // Returns the default value, in case the ini_get fails.
         if ($maxExecutionTime === null || empty($maxExecutionTime) || $maxExecutionTime < 0) {
             return 30;
         } else {
-            return (int) $maxExecutionTime;
+            return (int)$maxExecutionTime;
         }
     }
 
     /**
-     *   @return array
-    */
+     * @return array
+     */
     protected static function getDefaultHeaderData()
     {
         $shop_version = _PS_VERSION_;
         [$major_version, $minor_version, $_] = explode('.', $shop_version, 3);
         return [
-            self::SHOP_SYSTEM             => 'prestashop',
-            self::SHOP_SYSTEM_VERSION     => $shop_version,
+            self::SHOP_SYSTEM => 'prestashop',
+            self::SHOP_SYSTEM_VERSION => $shop_version,
             self::SHOP_SYSTEM_AND_VERSION => 'prestashop-' . $major_version . '.' . $minor_version,
-            ];
+        ];
     }
 }
