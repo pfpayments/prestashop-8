@@ -375,15 +375,15 @@ class PostFinanceCheckoutHelper
             $url = $base;
         }
         if (!empty($language)) {
-            $url .= '/' . str_replace('_', '-', $language);
+            $url .= str_replace('_', '-', $language . '/');
         }
         if (!empty($spaceId)) {
-            $url .= '/s/' . $spaceId;
+            $url .= 's/' . $spaceId . '/';
         }
         if (!empty($spaceViewId)) {
-            $url .= '/' . $spaceViewId;
+            $url .= $spaceViewId . '/';
         }
-        $url .= '/resource/' . $path;
+        $url .= 'resource/' . $path;
         return $url;
     }
 
